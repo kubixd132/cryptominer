@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Miner</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(to bottom, #1a1a1a, #333);
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 10px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        #game-container {
+            max-width: 450px;
+            width: 100%;
+            background: #222;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 255, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #4caf50;
+        }
+        header .logo {
+            font-size: 32px;
+        }
+        .currencies {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        .currency-card {
+            background: #333;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s;
+        }
+        .currency-card:hover {
+            transform: scale(1.05);
+        }
+        .currency-card span {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        .btc { color: #f7931a; }
+        .eth { color: #627eea; }
+        .doge { color: #c3a634; }
+        .hashrate-section {
+            background: #444;
+            padding: 12px;
+            border-radius: 10px;
+        }
+        .progress-bar {
+            background: #555;
+            border-radius: 5px;
+            height: 10px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .progress {
+            background: linear-gradient(to right, #4caf50, #8bc34a);
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+        button {
+            background: linear-gradient(45deg, #4caf50, #8bc34a);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 5px 0;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.7);
+        }
+        button:disabled {
+            background: #777;
+            cursor: not-allowed;
+        }
+        #mine-button {
+            font-size: 20px;
+            padding: 18px 30px;
+            background: linear-gradient(45deg, #ff9800, #f44336);
+            margin: 10px 0;
+        }
+        #reset-button {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            font-size: 14px;
+            padding: 10px 15px;
+        }
+        .upgrades {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .upgrade {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #333;
+            padding: 12px;
+            border-radius: 10px;
+            gap: 10px;
+        }
+        .upgrade-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        .upgrade button {
+            padding: 10px 15px;
+            font-size: 14px;
+            min-width: 120px;
+        }
+        #notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4caf50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 5px;
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 1000;
+            max-width: 90%;
+        }
+        #notification.show {
+            opacity: 1;
+        }
+        footer {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 10px;
+        }
+        /* Animacje */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 20px rgba(76, 175, 80, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+        }
+        @keyframes rotatePickaxe {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+        @keyframes particle {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+        }
+        #mine-button.mining {
+            animation: shake 0.5s ease-in-out, pulse 0.6s ease-in-out;
+        }
+        #mine-button.mining span:last-child {
+            animation: rotatePickaxe 0.5s ease-in-out;
+        }
+        .particle {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particle 1s ease-out forwards;
+            z-index: 100;
+        }
+        .particle.btc { background: radial-gradient(circle, #f7931a, #ffbf00); }
+        .particle.eth { background: radial-gradient(circle, #627eea, #8f9bff); }
+        .particle.doge { background: radial-gradient(circle, #c3a634, #ffd700); }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        .currency-card.fade-in span:last-child {
+            opacity: 0;
+            animation: fadeIn 0.5s ease forwards;
+        }
+        @media (max-width: 480px) {
+            #game-container { padding: 15px; gap: 12px; }
+            .currencies { grid-template-columns: 1fr; }
+            button { width: 100%; padding: 14px; }
+            #mine-button { padding: 20px; font-size: 18px; }
+            .upgrade { flex-direction: column; align-items: stretch; gap: 8px; }
+            .upgrade button { min-width: auto; }
+        }
+        @media (max-width: 360px) {
+            .currency-card span { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <header>
+            <span class="logo">⛏️</span>
+            <h1>Crypto Miner</h1>
+        </header>
+        <div class="currencies">
+            <div class="currency-card" id="btc-card">
+                <p>Bitcoin (BTC) <span class="btc">🟠</span></p>
+                <span id="btc">0.00</span>
+            </div>
+            <div class="currency-card" id="eth-card">
+                <p>Ethereum (ETH) <span class="eth">🔵</span></p>
+                <span id="eth">0.00</span>
+            </div>
+            <div class="currency-card" id="doge-card">
+                <p>Dogecoin (DOGE) <span class="doge">🟡</span></p>
+                <span id="doge">0.00</span>
+            </div>
+        </div>
+        <div class="hashrate-section">
+            <p>Hashrate: <span id="hashrate">1</span> H/s (ręczne) + <span id="auto-hashrate">0</span> H/s (auto)</p>
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+        </div>
+        
+        <button id="mine-button" onclick="mineCrypto()">
+            Kop Kryptowaluty! <span>⛏️</span>
+        </button>
+        
+        <h2>Ulepszenia</h2>
+        <div class="upgrades">
+            <div class="upgrade">
+                <div class="upgrade-info">
+                    GPU (+1 H/s auto) <span>🖥️</span>
+                </div>
+                <button id="buy-gpu" onclick="buyUpgrade('gpu')">Kup (<span id="gpu-cost">10</span> BTC)</button>
+                <span id="gpu-count">0</span>
+            </div>
+            <div class="upgrade">
+                <div class="upgrade-info">
+                    ASIC Miner (+5 H/s auto) <span>⚙️</span>
+                </div>
+                <button id="buy-asic" onclick="buyUpgrade('asic')">Kup (<span id="asic-cost">50</span> ETH)</button>
+                <span id="asic-count">0</span>
+            </div>
+            <div class="upgrade">
+                <div class="upgrade-info">
+                    Quantum Computer (+10 H/s auto) <span>🧠</span>
+                </div>
+                <button id="buy-quantum" onclick="buyUpgrade('quantum')">Kup (20 BTC + 100 ETH)</button>
+                <span id="quantum-count">0</span>
+            </div>
+        </div>
+        <button id="reset-button" onclick="resetGame()">Resetuj Grę</button>
+        <footer>Wersja 1.0</footer>
+    </div>
+    <div id="notification"></div>
+    <audio id="mine-sound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" type="audio/wav">
+    </audio>
+
+    <script>
+        let btc = 0;
+        let eth = 0;
+        let doge = 0;
+        let hashrate = 1;
+        let autoHashrate = 0;
+        let gpuCount = 0;
+        let asicCount = 0;
+        let quantumCount = 0;
+        let gpuCost = 10;
+        let asicCost = 50;
+        let quantumCostBtc = 20;
+        let quantumCostEth = 100;
+
+        const btcDisplay = document.getElementById('btc');
+        const ethDisplay = document.getElementById('eth');
+        const dogeDisplay = document.getElementById('doge');
+        const hashrateDisplay = document.getElementById('hashrate');
+        const autoHashrateDisplay = document.getElementById('auto-hashrate');
+        const gpuCountDisplay = document.getElementById('gpu-count');
+        const asicCountDisplay = document.getElementById('asic-count');
+        const quantumCountDisplay = document.getElementById('quantum-count');
+        const gpuCostDisplay = document.getElementById('gpu-cost');
+        const asicCostDisplay = document.getElementById('asic-cost');
+        const buyGpuButton = document.getElementById('buy-gpu');
+        const buyAsicButton = document.getElementById('buy-asic');
+        const buyQuantumButton = document.getElementById('buy-quantum');
+        const mineButton = document.getElementById('mine-button');
+        const progressBar = document.getElementById('progress');
+        const notification = document.getElementById('notification');
+        const mineSound = document.getElementById('mine-sound');
+        const btcCard = document.getElementById('btc-card');
+        const ethCard = document.getElementById('eth-card');
+        const dogeCard = document.getElementById('doge-card');
+
+        function updateDisplay() {
+            btcDisplay.textContent = btc.toFixed(2);
+            ethDisplay.textContent = eth.toFixed(2);
+            dogeDisplay.textContent = doge.toFixed(2);
+            hashrateDisplay.textContent = hashrate;
+            autoHashrateDisplay.textContent = autoHashrate;
+            gpuCountDisplay.textContent = gpuCount;
+            asicCountDisplay.textContent = asicCount;
+            quantumCountDisplay.textContent = quantumCount;
+            gpuCostDisplay.textContent = gpuCost;
+            asicCostDisplay.textContent = asicCost;
+            buyQuantumButton.textContent = `Kup (${quantumCostBtc} BTC + ${quantumCostEth} ETH)`;
+
+            buyGpuButton.disabled = btc < gpuCost;
+            buyAsicButton.disabled = eth < asicCost;
+            buyQuantumButton.disabled = (btc < quantumCostBtc || eth < quantumCostEth);
+
+            const totalHash = hashrate + autoHashrate;
+            const progressPercent = totalHash > 0 ? (autoHashrate / totalHash) * 100 : 0;
+            progressBar.style.width = `${progressPercent}%`;
+
+            checkMilestones();
+        }
+
+        function createParticles(type) {
+            for (let i = 0; i < 6; i++) { // Więcej cząsteczek dla funu
+                const particle = document.createElement('div');
+                particle.className = `particle ${type}`;
+                particle.style.left = `${window.innerWidth / 2}px`;
+                particle.style.top = `${window.innerHeight / 2}px`;
+                const angle = (Math.PI * 2 * i) / 6;
+                const velocity = 60 + Math.random() * 60;
+                particle.style.setProperty('--dx', `${Math.cos(angle) * velocity}px`);
+                particle.style.setProperty('--dy', `${Math.sin(angle) * velocity * -1}px`);
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+
+        function animateCard(card) {
+            card.classList.add('fade-in');
+            setTimeout(() => card.classList.remove('fade-in'), 500);
+        }
+
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.classList.add('show');
+            setTimeout(() => notification.classList.remove('show'), 3000);
+        }
+
+        function playSound() {
+            mineSound.currentTime = 0;
+            mineSound.play().catch(() => {});
+        }
+
+        function mineCrypto() {
+            const rand = Math.random();
+            let reward = hashrate;
+            let type, card;
+            if (rand < 0.333) {
+                btc += reward;
+                type = 'btc';
+                card = btcCard;
+            } else if (rand < 0.666) {
+                eth += reward;
+                type = 'eth';
+                card = ethCard;
+            } else {
+                doge += reward;
+                type = 'doge';
+                card = dogeCard;
+            }
+
+            mineButton.classList.add('mining');
+            setTimeout(() => mineButton.classList.remove('mining'), 600);
+
+            if (navigator.vibrate) navigator.vibrate(50);
+
+            createParticles(type);
+            animateCard(card);
+            playSound();
+
+            updateDisplay();
+        }
+
+        function buyUpgrade(type) {
+            let message = '';
+            if (type === 'gpu' && btc >= gpuCost) {
+                btc -= gpuCost;
+                gpuCount++;
+                autoHashrate += 1;
+                gpuCost = Math.floor(gpuCost * 1.2);
+                animateCard(btcCard);
+                message = 'Zakupiono GPU! 💻';
+            } else if (type === 'asic' && eth >= asicCost) {
+                eth -= asicCost;
+                asicCount++;
+                autoHashrate += 5;
+                asicCost = Math.floor(asicCost * 1.5);
+                animateCard(ethCard);
+                message = 'Zakupiono ASIC! 🔧';
+            } else if (type === 'quantum' && btc >= quantumCostBtc && eth >= quantumCostEth) {
+                btc -= quantumCostBtc;
+                eth -= quantumCostEth;
+                quantumCount++;
+                autoHashrate += 10;
+                quantumCostBtc = Math.floor(quantumCostBtc * 1.3);
+                quantumCostEth = Math.floor(quantumCostEth * 1.3);
+                animateCard(btcCard);
+                animateCard(ethCard);
+                message = 'Zakupiono Quantum Computer! 🤖';
+            }
+            if (message) {
+                showNotification(message);
+                playSound();
+            }
+            updateDisplay();
+        }
+
+        function checkMilestones() {
+            if (btc >= 100 && !localStorage.getItem('milestone100btc')) {
+                showNotification('🎉 100 BTC! +1 H/s ręczne!');
+                hashrate += 1;
+                localStorage.setItem('milestone100btc', 'true');
+            }
+            if (autoHashrate >= 50 && !localStorage.getItem('milestone50hash')) {
+                showNotification('🚀 50 H/s auto! Podwój hashrate!');
+                hashrate *= 2;
+                localStorage.setItem('milestone50hash', 'true');
+            }
+        }
+
+        function saveGame() {
+            const saveData = {
+                btc, eth, doge, hashrate, autoHashrate,
+                gpuCount, asicCount, quantumCount,
+                gpuCost, asicCost, quantumCostBtc, quantumCostEth
+            };
+            localStorage.setItem('cryptoMinerSave', JSON.stringify(saveData));
+        }
+
+        function loadGame() {
+            try {
+                const saveData = JSON.parse(localStorage.getItem('cryptoMinerSave'));
+                if (saveData) {
+                    btc = saveData.btc || 0;
+                    eth = saveData.eth || 0;
+                    doge = saveData.doge || 0;
+                    hashrate = saveData.hashrate || 1;
+                    autoHashrate = saveData.autoHashrate || 0;
+                    gpuCount = saveData.gpuCount || 0;
+                    asicCount = saveData.asicCount || 0;
+                    quantumCount = saveData.quantumCount || 0;
+                    gpuCost = saveData.gpuCost || 10;
+                    asicCost = saveData.asicCost || 50;
+                    quantumCostBtc = saveData.quantumCostBtc || 20;
+                    quantumCostEth = saveData.quantumCostEth || 100;
+                    showNotification('Zapis wczytany! 💾');
+                }
+            } catch (e) {}
+            updateDisplay();
+        }
+
+        function resetGame() {
+            if (confirm('Reset gry? Stracisz postęp! 😱')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // Auto-kopanie
+        setInterval(() => {
+            if (autoHashrate > 0) {
+                const rand = Math.random();
+                const reward = autoHashrate / 10;
+                if (rand < 0.333) btc += reward;
+                else if (rand < 0.666) eth += reward;
+                else doge += reward;
+                updateDisplay();
+            }
+        }, 1000);
+
+        // Auto-save
+        setInterval(saveGame, 10000);
+
+        // Start
+        loadGame();
+    </script>
+</body>
+</html>
